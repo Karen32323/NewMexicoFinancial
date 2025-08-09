@@ -1,18 +1,161 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>New Mexico Financial - Login</title>
-    <link rel="stylesheet" href="style.css">
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Account Dashboard</title>
+<style>
+  :root { --bg:#0c0f14; --panel:#121722; --ink:#e9eef7; --muted:#8b94a7; --accent:#4cc9f0; --warn:#f7b500; --good:#5cff8d; --bad:#ff6b6b; --line:#1c2230; }
+  *{box-sizing:border-box} html,body{height:100%}
+  body{margin:0;background:linear-gradient(180deg,#0c0f14,#0a0d12);color:var(--ink);font:500 16px/1.45 system-ui,Segoe UI,Roboto,Inter,Arial}
+  .wrap{display:grid;grid-template-columns:320px 1fr;gap:16px;height:100%;padding:16px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,.3)}
+  .left{display:flex;flex-direction:column;gap:16px}
+  .brand{padding:18px 18px 6px}
+  .brand h1{margin:0;font-size:18px;letter-spacing:.2px;color:var(--muted);font-weight:600}
+  .brand h2{margin:4px 0 0;font-size:28px;font-weight:800;color:var(--ink)}
+  .balance{padding:18px;border-top:1px solid var(--line)}
+  .balance .label{color:var(--muted);font-size:13px;text-transform:uppercase;letter-spacing:.12em}
+  .money{font-size:42px;font-weight:900;margin:6px 0 2px}
+  .badge{display:inline-block;font-size:12px;color:#0a0d12;background:var(--good);padding:2px 8px;border-radius:999px;margin-left:8px}
+  .controls{padding:14px 18px 18px;border-top:1px solid var(--line);display:grid;gap:10px}
+  .row{display:flex;gap:8px}
+  input[type="number"]{flex:1;background:#0f1420;border:1px solid var(--line);border-radius:10px;padding:10px 12px;color:var(--ink);outline:none}
+  button{border:1px solid var(--line);background:#0f1420;color:var(--ink);padding:10px 12px;border-radius:10px;cursor:pointer}
+  button:hover{border-color:#2a3347}
+  .primary{background:var(--accent);color:#06121a;border-color:transparent;font-weight:800}
+  .warn{background:var(--warn);color:#231b00;border-color:transparent;font-weight:800}
+  .danger{background:var(--bad);color:#230000;border-color:transparent;font-weight:800}
+  .right{display:flex;flex-direction:column}
+  .toolbar{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;border-bottom:1px solid var(--line)}
+  .toolbar h3{margin:0;font-size:15px;color:var(--muted);font-weight:700;letter-spacing:.12em;text-transform:uppercase}
+  .ghost{opacity:.75}
+  .log{padding:8px 0 0 0;overflow:auto}
+  .entry{display:grid;grid-template-columns:140px 1fr 140px;gap:12px;padding:12px 16px;border-bottom:1px dashed var(--line)}
+  .t{color:var(--muted);font-size:13px}
+  .amt.pos{color:var(--good);font-weight:800}
+  .amt.neg{color:var(--bad);font-weight:800}
+  .amt.hold{color:var(--warn);font-weight:800}
+  .note{color:var(--ink)}
+  .footer{padding:12px 16px;color:var(--muted);font-size:12px}
+  .kbd{background:#101625;border:1px solid var(--line);border-radius:6px;padding:2px 6px;font-size:12px;margin-left:6px}
+</style>
 </head>
 <body>
-    <div class="login-box">
-        <h2>New Mexico Financial</h2>
-        <form action="dashboard.html">
-            <input type="email" placeholder="Email address" required>
-            <button type="submit">Login</button>
-        </form>
+  <div class="wrap">
+    <div class="left">
+      <div class="card">
+        <div class="brand">
+          <h1>Account • Personal Checking</h1>
+          <h2>Dashboard</h2>
+        </div>
+        <div class="balance">
+          <div class="label">Current Balance</div>
+          <div class="money" id="balance">$31,974.25 <span class="badge" id="status">Active</span></div>
+          <div class="t" id="subnote">Last update <span id="when">just now</span></div>
+        </div>
+        <div class="controls">
+          <div class="row">
+            <input id="amt" type="number" step="0.01" placeholder="Amount (e.g., 500.00)">
+          </div>
+          <div class="row">
+            <button class="primary" id="refundBtn">+ Add Refund</button>
+            <button class="warn" id="holdBtn">Add Pending Hold</button>
+            <button class="danger" id="transferBtn">Attempt Transfer</button>
+          </div>
+          <div class="row">
+            <button id="quick1">$300 Refund</button>
+            <button id="quick2">$3,000 Refund</button>
+            <button id="quick3">$50,000 Refund</button>
+          </div>
+          <div class="t">Hotkeys: <span class="kbd">R</span> refund, <span class="kbd">H</span> hold, <span class="kbd">T</span> transfer, <span class="kbd">1/2/3</span> quick amounts</div>
+        </div>
+      </div>
+      <div class="card footer">Local demo only. Not a real bank. No data is sent anywhere.</div>
     </div>
+
+    <div class="right card">
+      <div class="toolbar">
+        <h3>Activity</h3>
+        <div class="t ghost" id="acct">Acct •••• 1027</div>
+      </div>
+      <div class="log" id="log"></div>
+    </div>
+  </div>
+
+<script>
+(function(){
+  const balanceEl = document.getElementById('balance');
+  const whenEl = document.getElementById('when');
+  const logEl = document.getElementById('log');
+  const amtEl = document.getElementById('amt');
+
+  let balance = 31974.25;
+  let holds = 0;
+
+  function fmt(n){ return n.toLocaleString(undefined,{style:'currency',currency:'USD'}); }
+  function ts(){ return new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}); }
+  function updateBalanceNote(){ whenEl.textContent = 'at ' + ts(); }
+
+  function render(){
+    balanceEl.firstChild.nodeValue = fmt(balance) + ' ';
+    updateBalanceNote();
+  }
+
+  function log(type, amount, note){
+    const row = document.createElement('div');
+    row.className = 'entry';
+    const t = document.createElement('div');
+    t.className = 't'; t.textContent = ts();
+    const n = document.createElement('div');
+    n.className = 'note'; n.textContent = note || (type==='refund'?'Refund received':type==='hold'?'Pending hold placed':'Transfer request submitted');
+    const a = document.createElement('div');
+    a.className = 'amt ' + (type==='refund'?'pos':type==='hold'?'hold':'neg');
+    a.textContent = (type==='refund'?'+ ':'') + (type==='transfer'?'- ':'') + fmt(amount);
+    row.appendChild(t); row.appendChild(n); row.appendChild(a);
+    logEl.prepend(row);
+  }
+
+  function getAmt(defaultVal){
+    let val = parseFloat(amtEl.value || defaultVal);
+    if(isNaN(val) || val<=0){ val = defaultVal; }
+    return parseFloat(val.toFixed(2));
+  }
+
+  function addRefund(amount){
+    balance += amount;
+    render(); log('refund', amount, 'Refund processed');
+  }
+  function addHold(amount){
+    holds += amount;
+    render(); log('hold', amount, 'Pending debit (processing)');
+  }
+  function attemptTransfer(amount){
+    // Show “transfer” visually but do not actually change balance (for showmanship)
+    log('transfer', amount, 'Transfer submitted — processing...');
+  }
+
+  // Buttons
+  document.getElementById('refundBtn').onclick = ()=> addRefund(getAmt(300));
+  document.getElementById('holdBtn').onclick = ()=> addHold(getAmt(500));
+  document.getElementById('transferBtn').onclick = ()=> attemptTransfer(getAmt(1000));
+  document.getElementById('quick1').onclick = ()=> addRefund(300);
+  document.getElementById('quick2').onclick = ()=> addRefund(3000);
+  document.getElementById('quick3').onclick = ()=> addRefund(50000);
+
+  // Hotkeys
+  window.addEventListener('keydown', (e)=>{
+    if(e.target.tagName === 'INPUT') return;
+    if(e.key==='r' || e.key==='R') addRefund(getAmt(300));
+    if(e.key==='h' || e.key==='H') addHold(getAmt(500));
+    if(e.key==='t' || e.key==='T') attemptTransfer(getAmt(1000));
+    if(e.key==='1') addRefund(300);
+    if(e.key==='2') addRefund(3000);
+    if(e.key==='3') addRefund(50000);
+  });
+
+  render();
+})();
+</script>
 </body>
 </html>
